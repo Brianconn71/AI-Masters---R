@@ -1,0 +1,163 @@
+---
+title: "Ankle Fractures Analysis"
+author: "J Newell"
+date: "November 2020"
+output:
+  word_document: default
+  html_document: default
+---
+
+## Question of Interest
+
+In this study 60 consecutive patients were randomised to one of two Treatments.  
+
+Patients on Treatment A (Cast Immobilisation) had below knee cast post ankle fracture fixation and remained non weight bearing for six weeks.  
+
+Patients on Treatment B (Early Mobilisation) had a back-slab for 2 weeks post fixation which was subsequently removed and, once the radiographs were deemed satisfactory, they were referred to the physiotherapy services for range of movement exercise while remaining non weight bearing.   
+
+Patients were followed up at 2 ,6 12, 24, and 36 weeks post fixation with their pain and functional status being measured by the American Orthopaedic Foot and Ankle Score (AOFAS) which ranges from 0 to 100 with 100 corresponding to fully functioning and pain-free status (i.e. higher is better). 
+
+Use these data to investigate whether there is a meaningful difference in the typical 12 week AOFAS score between the treatments.
+
+```{r}
+library(ggridges)
+library(viridis)
+library(ggpubr)
+library(infer)
+library(table1)
+library(tolerance)
+library(tidyverse)
+```
+
+
+
+```{r}
+
+
+ankle.df <- read.csv("Data/Ankle_Fractures.csv")
+glimpse(ankle.df)
+```
+
+
+For this analysis we will start by comparing the AOFAS scores at week 12.
+
+You can filter put the week 12 data into a new data frame (called ankle.12.df) as follows:
+
+```{r}
+
+ankle.12.df <- ankle.df %>% filter(Time == 12)
+
+```
+
+
+# Subjective Impressions
+
+Generate summary statistics using the summarize function (in tidyverse)
+
+```{r}
+
+ankle.12.df %>% group_by(Treatment) %>% 
+  summarize(Mean=mean(AOFAS), 
+            SD= sd(AOFAS),
+            sample.size = n())
+
+```
+
+Generate summary statistics using the table1 function (in table1).  Note that this renders in html but not MS Word.
+
+
+```{r}
+
+table1( ~AOFAS | Treatment, data = ankle.12.df )
+
+```
+
+## Side by side boxplot (with mean symbol superimposed)
+
+```{r}
+ggplot(ankle.12.df, aes(x = Treatment, y = AOFAS, colour=Treatment)) +
+        geom_boxplot() + 
+  ggtitle("Boxplot of Week 12 AOFAS by Group") +
+  labs(title = "Boxplot of Week 12 AOFAS by Group",
+       subtitle = "(with mean symbol)",
+       y = "AOFAS Score", 
+       x = " ") +
+  stat_summary(fun=mean, geom="point", shape=20, size=5, color="darkblue", fill="darkblue") +
+  theme(legend.position = "none")
+
+```
+
+
+## Density plots with rainclouds
+
+```{r}
+
+ggplot(ankle.12.df, aes(x = AOFAS, 
+                      y = Treatment, 
+                      fill = ..x..)) +
+  geom_density_ridges_gradient(jittered_points = TRUE, position = "raincloud",
+                                  alpha = 0.7, scale = 0.9) +
+  scale_fill_viridis(name = "AOFAS", option = "E") +
+  labs(x = "Week 12 AOFAS Score", y = "") +
+  labs(color='AOFAS') +
+  ggtitle('Week 12 AOFAS Density by Treatment')
+
+
+```
+## Formal Analysis
+
+95% Confidence Interval for difference in the population mean AOFAS 
+
+```{r}
+
+t.test(AOFAS ~ Treatment, data= ankle.12.df)
+
+```
+
+
+95% Bootstrap CI for difference in population means
+
+```{r}
+
+ankle.12.boot <- ankle.12.df %>%
+  specify(response = AOFAS, explanatory = Treatment) %>%
+  generate(reps = 1000, type = "bootstrap") %>%
+  calculate(stat = "diff in means", order = c("B", "A"))
+
+percentile_ci <- get_ci(ankle.12.boot)
+
+percentile_ci
+
+```
+
+
+
+```{r}
+
+ankle.12.boot %>%  visualize() +  shade_confidence_interval(percentile_ci)
+
+```
+Tolerance Interval
+
+
+Treatment A (Cast)
+
+```{r}
+
+TreatmentA.Improvement.in.AOFAS <- ankle.12.df %>% 
+  filter(Treatment %in% 'A') %>% select(AOFAS) %>% as.data.frame()
+
+normtol.int(TreatmentA.Improvement.in.AOFAS$AOFAS, alpha = 0.05, P = 0.95, side = 2)
+
+```
+
+Treatment B (Early Imobilistion)
+
+```{r}
+
+TreatmentB.Improvement.in.AOFAS <- ankle.12.df %>% 
+  filter(Treatment %in% 'B') %>% select(AOFAS) %>% as.data.frame()
+
+normtol.int(TreatmentB.Improvement.in.AOFAS$AOFAS, alpha = 0.05, P = 0.95, side = 2)
+```
+
