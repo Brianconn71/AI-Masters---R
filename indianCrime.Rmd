@@ -1,0 +1,11 @@
+---
+title: "indianCrime"
+author: "Brian Connolly"
+date: "2026-10-24"
+output: html_document
+---
+
+```{r}
+indianCrime.df <- read.csv("in")
+```
+

@@ -27,6 +27,7 @@ library(infer)
 library(table1)
 library(tolerance)
 library(tidyverse)
+library("magrittr")
 ```
 
 
@@ -159,5 +160,42 @@ TreatmentB.Improvement.in.AOFAS <- ankle.12.df %>%
   filter(Treatment %in% 'B') %>% select(AOFAS) %>% as.data.frame()
 
 normtol.int(TreatmentB.Improvement.in.AOFAS$AOFAS, alpha = 0.05, P = 0.95, side = 2)
+```
+
+95% Bootstrap Confidence Interval
+```{r}
+ankle.12.boot <- ankle.12.df %>%
+  specify(response = AOFAS, explanatory = Treatment) %>%
+  generate(reps = 1000, type="bootstrap") %>%
+  calculate(stat = "diff in means", order = c("B", "A"))
+
+percentile_ci <- get_ci(ankle.12.boot)
+
+percentile_ci
+
+ankle.12.boot %>% visualise() + shade_confidence_interval(percentile_ci)
+```
+
+### 12 week AOFAS in 95% of the population can be estimated using a 95%/95% Tolerance interval, namely between 61 and 24 for those treated with a cast compared to 79 to 93 for those treated with early mobilisation.
+```{r}
+ankle.12.df %>% 
+  filter(Treatment %in% 'A') %>% select (AOFAS) %>% pull() %>%
+  normtol.int(alpha = 0.05, P = 0.95, side = 2)
+```
+
+```{r}
+ankle.12.df %>% 
+  filter(Treatment %in% 'B') %>% select(AOFAS) %>% pull() %>%
+normtol.int(alpha = 0.05, P = 0.95, side = 2)
+```
+The Tolerance Intervals provide a useful summary as to the likely AOFAS score after 12 weeks for both treatments. The best guess is still the sample mean for each treatment group, the 95% TI provides a range of values around the sample mean in order to cover 95% of the population (with 95% confidence).
+
+```{r}
+ankle.df %>% 
+  ggplot(aes(y = Treatment, x = AOFAS)) +
+  geom_boxplot() + 
+  ggtitle("Boxplot of AOFAS score by treatment") +
+  ylab("Treatment") +
+  xlab("Aofas") 
 ```
 
